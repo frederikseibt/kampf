@@ -1,26 +1,29 @@
-import { getUpcoming, getResults, getEvent } from './data/index.js';
-import { esc, dayShort, dayLong, time, relative, resultText } from './format.js';
-
-const flag = (f) => (f.flag ? `<img class="flag" src="${esc(f.flag)}" alt="" loading="lazy" />` : '');
+import { getAllEvents, getEvent } from './data/index.js';
+import { esc, dayShort, dayLong, time, relative, resultText, weightLabel, weekday, dayMonth } from './format.js';
+import { skeleton, errorBox, backLink, flagImg, fighterLink } from './ui.js';
+import { isFav } from './store.js';
 
 function mainEventLine(ev) {
   const m = ev.mainEvent;
   if (!m) return '';
   if (ev.state === 'post') {
     const w = m.fighters.find((f) => f.winner);
-    if (w) return `<span class="win">${esc(w.name)}</span> <span class="muted">${esc(resultText(m.result))}</span>`;
+    if (w) return `<span class="win">${fighterLink(w)}</span> <span class="muted">${esc(resultText(m.result))}</span>`;
   }
-  return m.fighters.map((f) => esc(f.name)).join(' <span class="muted">vs</span> ');
+  return m.fighters.map(fighterLink).join(' <span class="muted">vs</span> ');
 }
+
+const hasFavorite = (ev) => ev.segments.some((s) => s.fights.some((f) => f.fighters.some((x) => isFav(x.id))));
 
 function eventCard(ev) {
   const live = ev.state === 'in';
   const rel = live ? '' : relative(ev.date);
   return `
-  <article class="card event" data-href="#/event/${esc(ev.id)}" tabindex="0">
+  <article class="card event ${ev.state === 'post' ? 'past' : ''}" data-id="${esc(ev.id)}" data-href="#/event/${esc(ev.id)}" tabindex="0">
     <div class="event-top">
       <span class="chip ${live ? 'chip-live' : ''}">${live ? 'LIVE' : esc(dayShort(ev.date))}</span>
       ${rel ? `<span class="chip chip-accent">${rel}</span>` : ''}
+      ${hasFavorite(ev) ? '<span class="chip chip-fav">★ Favorit</span>' : ''}
       ${ev.canceled ? '<span class="chip">Abgesagt</span>' : ''}
       <span class="muted time">${ev.state === 'post' ? '' : esc(time(ev.date))}</span>
     </div>
@@ -31,40 +34,66 @@ function eventCard(ev) {
   </article>`;
 }
 
-const skeleton = `<div class="card skeleton"></div><div class="card skeleton"></div><div class="card skeleton"></div>`;
-
-const errorBox = (msg) => `
-  <div class="card center">
-    <p>Daten konnten nicht geladen werden.</p>
-    <p class="muted small">${esc(msg)}</p>
-    <button class="btn" data-action="reload">Erneut versuchen</button>
-  </div>`;
-
-export async function homeView(root, force) {
-  root.innerHTML = `<h1 class="page-title">Kommende Events</h1>${skeleton}`;
+// Eine Liste für alles: Vergangenes oben, ab "Aktuell" kommende Events. Oben eine Datumsleiste.
+// restoreY: Scrollposition, falls man vom Detail zurückkommt; sonst Sprung zum nächsten Event.
+export async function eventsView(root, restoreY) {
+  root.innerHTML = `<h1 class="page-title">Events</h1>${skeleton}`;
   try {
-    const events = await getUpcoming(force);
-    root.innerHTML = `<h1 class="page-title">Kommende Events</h1>` +
-      (events.length ? events.map(eventCard).join('') : '<p class="muted center">Keine kommenden Events gefunden.</p>');
-  } catch (e) {
-    root.innerHTML = `<h1 class="page-title">Kommende Events</h1>${errorBox(e.message)}`;
-  }
-}
+    const events = await getAllEvents();
+    const firstUp = events.findIndex((e) => e.state !== 'post');
+    const chips = events.map((e, i) => `
+      <button class="day ${e.state === 'post' ? 'day-past' : ''}" data-jump="${esc(e.id)}">
+        <span>${esc(weekday(e.date))}</span><b>${esc(dayMonth(e.date))}</b>
+      </button>`).join('');
+    const list = events.map((e, i) => (i === firstUp ? `<div class="today-marker" id="today">Aktuell &amp; kommend</div>` : '') + eventCard(e)).join('');
+    root.innerHTML = `
+      <nav class="strip" aria-label="Datum wählen">
+        <button class="day day-today" data-jump="today"><span>Zum</span><b>Heute</b></button>
+        <div class="strip-days">${chips}</div>
+      </nav>
+      <h1 class="page-title">Events</h1>
+      ${events.length ? list : '<p class="muted center">Keine Events gefunden.</p>'}`;
 
-export async function resultsView(root, force) {
-  root.innerHTML = `<h1 class="page-title">Ergebnisse</h1>${skeleton}`;
-  try {
-    const events = await getResults(force);
-    root.innerHTML = `<h1 class="page-title">Ergebnisse</h1>` +
-      (events.length ? events.map(eventCard).join('') : '<p class="muted center">Noch keine Ergebnisse.</p>');
+    const target = firstUp >= 0 ? root.querySelector('#today') : null;
+    if (restoreY) window.scrollTo(0, restoreY);
+    else if (target) target.scrollIntoView({ block: 'start' });
+
+    // aktives Datum in der Leiste mitführen
+    const strip = root.querySelector('.strip-days');
+    const cards = [...root.querySelectorAll('.event')];
+    let activeId = null;
+    let waiting = false;
+    const update = () => {
+      waiting = false;
+      if (!root.contains(strip)) return window.removeEventListener('scroll', onScroll);
+      // aktiv ist das letzte Event, dessen Oberkante schon unter der Leiste angekommen ist
+      const line = 150;
+      const current = [...cards].reverse().find((c) => c.getBoundingClientRect().top <= line) || cards[0];
+      if (!current || current.dataset.id === activeId) return;
+      activeId = current.dataset.id;
+      root.querySelectorAll('.day.active').forEach((d) => d.classList.remove('active'));
+      const chip = root.querySelector(`.day[data-jump="${activeId}"]`);
+      if (chip) {
+        chip.classList.add('active');
+        strip.scrollTo({ left: chip.offsetLeft - strip.clientWidth / 2 + chip.clientWidth / 2, behavior: 'smooth' });
+      }
+    };
+    function onScroll() {
+      if (!waiting) {
+        waiting = true;
+        requestAnimationFrame(update);
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    update();
   } catch (e) {
-    root.innerHTML = `<h1 class="page-title">Ergebnisse</h1>${errorBox(e.message)}`;
+    root.innerHTML = `<h1 class="page-title">Events</h1>${errorBox(e.message)}`;
   }
 }
 
 function fighterRow(f, done) {
   const cls = done ? (f.winner ? 'fighter winner' : 'fighter loser') : 'fighter';
-  return `<div class="${cls}">${flag(f)}<span class="fname">${esc(f.name)}</span>${f.record ? `<span class="muted small rec">${esc(f.record)}</span>` : ''}${done && f.winner ? '<span class="tick" aria-label="Sieger">✓</span>' : ''}</div>`;
+  return `<div class="${cls}">${flagImg(f.flag)}<span class="fname">${fighterLink(f)}</span>${isFav(f.id) ? '<span class="star">★</span>' : ''}${f.record ? `<span class="muted small rec">${esc(f.record)}</span>` : ''}${done && f.winner ? '<span class="tick" aria-label="Sieger">✓</span>' : ''}</div>`;
 }
 
 function fightRow(fight) {
@@ -73,7 +102,7 @@ function fightRow(fight) {
   return `
   <div class="fight ${fight.isMain ? 'fight-main' : ''}">
     <div class="fight-meta muted small">
-      <span>${fight.isMain ? 'Hauptkampf · ' : ''}${esc(fight.weightClass)}</span>
+      <span>${fight.isMain ? 'Hauptkampf · ' : ''}${esc(weightLabel(fight.weightClass))}</span>
       <span>${done ? esc(resultText(fight.result)) : fight.canceled ? 'Abgesagt' : ''}</span>
     </div>
     ${fighterRow(a, done)}
@@ -82,16 +111,15 @@ function fightRow(fight) {
 }
 
 export async function eventView(root, id) {
-  root.innerHTML = `<a class="back" href="#/">‹ Zurück</a>${skeleton}`;
+  root.innerHTML = `${backLink('#/')}${skeleton}`;
   try {
     const ev = await getEvent(id);
     if (!ev) {
-      root.innerHTML = `<a class="back" href="javascript:history.back()">‹ Zurück</a><p class="muted center">Event nicht gefunden.</p>`;
+      root.innerHTML = `${backLink('#/')}<p class="muted center">Event nicht gefunden.</p>`;
       return;
     }
-    const back = ev.state === 'post' ? '#/results' : '#/';
     root.innerHTML = `
-      <a class="back" href="${back}">‹ Zurück</a>
+      ${backLink('#/')}
       <header class="hero">
         <p class="muted small">${esc(dayLong(ev.date))}${ev.state === 'post' ? '' : ' · ' + esc(time(ev.date))}</p>
         <h1>${esc(ev.title)}</h1>
@@ -105,6 +133,6 @@ export async function eventView(root, id) {
         </section>`).join('') || '<p class="muted center">Fight Card noch nicht veröffentlicht.</p>'}
       <p class="muted small center note">Zeiten in Berlin. Card-Aufteilung aus den Startzeiten abgeleitet.</p>`;
   } catch (e) {
-    root.innerHTML = `<a class="back" href="#/">‹ Zurück</a>${errorBox(e.message)}`;
+    root.innerHTML = `${backLink('#/')}${errorBox(e.message)}`;
   }
 }

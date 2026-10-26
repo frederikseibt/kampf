@@ -5,7 +5,7 @@ import { APP } from '../config.js';
 import { espnProvider } from './espn.js';
 
 const provider = espnProvider;
-const CACHE_KEY = `events:${provider.name}:v2`;
+const CACHE_KEY = `events:${provider.name}:v3`;
 
 let memory = null;
 
@@ -46,6 +46,26 @@ async function load(force = false) {
     if (cached) return (memory = cached.events);
     throw err;
   }
+}
+
+// Alle Events chronologisch (älteste zuerst), vergangene und kommende zusammen
+export async function getAllEvents(force) {
+  const all = await load(force);
+  return [...all].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Alle Kämpfe eines Kämpfers aus den geladenen Events (neueste zuerst)
+export async function getFightsOf(fighterId) {
+  const all = await load();
+  const out = [];
+  for (const event of all) {
+    for (const seg of event.segments) {
+      for (const fight of seg.fights) {
+        if (fight.fighters.some((f) => f.id === fighterId)) out.push({ event, fight });
+      }
+    }
+  }
+  return out.sort((a, b) => b.event.date.localeCompare(a.event.date));
 }
 
 export async function getUpcoming(force) {

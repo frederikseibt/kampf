@@ -5,7 +5,7 @@
 // Event:  { id, name, title, subtitle, date, state, venue, location, broadcast, segments, mainEvent }
 // Segment: { name, fights: Fight[] }
 // Fight:  { id, weightClass, date, state, fighters: Fighter[], result, isMain }
-// Fighter: { name, short, flag, record, winner }
+// Fighter: { id, name, short, flag, record, winner }
 
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard';
 
@@ -34,6 +34,7 @@ function normalizeFight(comp, index) {
   const fighters = [...comp.competitors]
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((c) => ({
+      id: c.id,
       name: fixMojibake(c.athlete?.displayName || c.athlete?.fullName || '?'),
       short: fixMojibake(c.athlete?.shortName || c.athlete?.displayName || '?'),
       flag: c.athlete?.flag?.href || '',
