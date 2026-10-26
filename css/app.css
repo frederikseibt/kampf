@@ -1,0 +1,91 @@
+:root {
+  --bg: #0b0b0f;
+  --surface: #16161d;
+  --surface-2: #1f1f28;
+  --line: #2a2a35;
+  --text: #f2f2f5;
+  --muted: #9a9aa8;
+  --accent: #ff3b30;
+  --win: #34d399;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body {
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: env(safe-area-inset-top) 0 0;
+}
+#app {
+  max-width: 640px; margin: 0 auto;
+  padding: 16px 16px calc(84px + env(safe-area-inset-bottom));
+}
+h1, h2, h3, p { margin: 0; }
+.page-title { font-size: 28px; font-weight: 800; margin: 8px 0 16px; letter-spacing: -.02em; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.center { text-align: center; padding: 24px 0; }
+.note { padding-top: 8px; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  padding: 16px; margin-bottom: 12px;
+}
+.event { cursor: pointer; display: grid; gap: 6px; }
+.event:active { background: var(--surface-2); }
+.event h3 { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+.subtitle { color: var(--text); opacity: .85; }
+.main-line { font-weight: 600; }
+.win { color: var(--win); font-weight: 700; }
+.event-top { display: flex; gap: 8px; align-items: center; }
+.event-top .time { margin-left: auto; font-size: 13px; }
+
+.chip {
+  display: inline-block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  background: var(--surface-2); border-radius: 999px; padding: 3px 10px;
+}
+.chip-accent { background: rgba(255, 59, 48, .15); color: var(--accent); }
+.chip-live { background: var(--accent); color: #fff; }
+
+.btn {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  font: inherit; font-weight: 700; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 18px; text-decoration: none; min-height: 48px;
+}
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-block { display: flex; width: 100%; margin-top: 8px; }
+.btn-sub { font-size: 11px; font-weight: 500; opacity: .85; }
+
+.back { display: inline-block; color: var(--muted); text-decoration: none; padding: 8px 0 12px; }
+.hero { display: grid; gap: 4px; margin-bottom: 20px; }
+.hero h1 { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+.seg {
+  font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+  margin: 20px 0 8px; font-weight: 700;
+}
+.fights { padding: 0; overflow: hidden; }
+.fight { padding: 14px 16px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
+.fight:first-child { border-top: 0; }
+.fight-main { background: linear-gradient(90deg, rgba(255, 59, 48, .10), transparent); }
+.fight-meta { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.fighter { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.fighter.loser { opacity: .55; font-weight: 500; }
+.fighter.winner .fname { color: var(--win); }
+.fname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec { margin-left: auto; }
+.tick { color: var(--win); margin-left: auto; }
+.flag { width: 22px; height: 15px; object-fit: cover; border-radius: 2px; flex: none; }
+
+.skeleton { height: 150px; background: linear-gradient(90deg, var(--surface), var(--surface-2), var(--surface)); background-size: 200% 100%; animation: sh 1.2s infinite linear; }
+@keyframes sh { to { background-position: -200% 0; } }
+
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 8px;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  background: rgba(11, 11, 15, .92); backdrop-filter: blur(14px); border-top: 1px solid var(--line);
+}
+.tabbar a {
+  flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: 11px; font-weight: 600; color: var(--muted); text-decoration: none; padding: 4px 0;
+}
+.tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tabbar a.active { color: var(--accent); }

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0b0b0f"/>
+  <polygon points="190,70 322,70 442,190 442,322 322,442 190,442 70,322 70,190" fill="none" stroke="#ff3b30" stroke-width="28" stroke-linejoin="round"/>
+  <text x="256" y="300" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="130" fill="#f2f2f5">MMA</text>
+</svg>
