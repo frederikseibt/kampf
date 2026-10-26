@@ -183,3 +183,5 @@ h1, h2, h3, p { margin: 0; }
 .toggle input:checked + .switch { background: var(--accent); border-color: var(--accent); }
 .toggle input:checked + .switch::after { transform: translateX(20px); }
 .note { padding: 8px 0; }
+.fname-col { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.fname-col .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

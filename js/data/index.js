@@ -5,7 +5,7 @@ import { APP } from '../config.js';
 import { espnProvider } from './espn.js';
 
 const provider = espnProvider;
-const CACHE_KEY = `events:${provider.name}:v3`;
+const CACHE_KEY = `events:${provider.name}:v4`;
 
 let memory = null;
 

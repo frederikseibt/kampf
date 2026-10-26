@@ -4,7 +4,7 @@ export const APP = {
   timeZone: 'Europe/Berlin',
   locale: 'de-DE',
   // Zeitfenster, das die Datenschicht auf einmal lädt (Tage relativ zu heute)
-  daysBack: 90,
+  daysBack: 180,
   daysAhead: 180,
   // Cache-Dauer für Listen im Browser (Minuten)
   cacheMinutes: 10,

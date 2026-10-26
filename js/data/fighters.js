@@ -1,12 +1,17 @@
-// Ranglisten und Kämpferprofile (ESPN). Nur diese Datei kennt das ESPN-Format.
+// Kämpferübersicht und Kämpferprofile.
 //
-// Division: { key, de, kg, fighters: [{ id, name, flag, record, rank, champion }] }
+// Die Ranglisten von ESPN sind veraltet (Stand ca. 2021), deshalb wird die Übersicht aus den
+// Events abgeleitet: alle Kämpfer, die zuletzt gekämpft haben oder demnächst kämpfen.
+//
+// Division: { key, de, kg, fighters: [{ id, name, flag, record, next, last }] }
+//   next / last: { eventId, eventTitle, date } des nächsten bzw. letzten Kampfs
 // Profil:   { id, name, nickname, flag, divisionKey, weight, height, reach, age, born, stance, team, status, record, wins, losses, draws }
 
 import { DIVISIONS } from '../config.js';
+import { divisionKeyOf } from '../format.js';
 import { cached } from './cache.js';
+import { getAllEvents } from './index.js';
 
-const RANKINGS = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/rankings';
 const CORE = 'https://sports.core.api.espn.com/v2/sports/mma/athletes/';
 
 async function getJson(url) {
@@ -15,51 +20,37 @@ async function getJson(url) {
   return res.json();
 }
 
-const toFighter = (r) => ({
-  id: r.athlete.id,
-  name: r.athlete.displayName,
-  flag: r.athlete.flag || '',
-  record: r.recordSummary || '',
-  rank: r.current,
-  champion: false,
-});
-
-function normalizeRankings(json) {
-  const divisions = new Map();
-  const get = (key, de, kg) => {
-    if (!divisions.has(key)) divisions.set(key, { key, de, kg, fighters: [] });
-    return divisions.get(key);
-  };
-  for (const r of json.rankings || []) {
-    const p4p = /pound for pound/i.test(r.name);
-    const women = /^women/i.test(r.name);
-    const base = r.name.replace(/ (Division|Pound for Pound).*$/i, '');
-    let div;
-    if (p4p) div = get(women ? 'P4P-W' : 'P4P-M', women ? 'Pound for Pound · Frauen' : 'Pound for Pound · Männer', null);
-    else if (DIVISIONS[base]) div = get(base, DIVISIONS[base].de, DIVISIONS[base].kg);
-    else continue;
-    const isChamps = /champions/i.test(r.name);
-    for (const rank of r.ranks || []) {
-      const f = toFighter(rank);
-      if (isChamps) {
-        f.champion = true;
-        f.rank = 0;
-        div.fighters = div.fighters.filter((x) => x.id !== f.id);
-        div.fighters.unshift(f);
-      } else if (!div.fighters.some((x) => x.id === f.id)) {
-        div.fighters.push(f);
+export async function getDivisions() {
+  const events = await getAllEvents();
+  const byDivision = new Map(Object.keys(DIVISIONS).map((k) => [k, new Map()]));
+  for (const ev of events) {
+    for (const seg of ev.segments) {
+      for (const fight of seg.fights) {
+        const people = byDivision.get(divisionKeyOf(fight.weightClass));
+        if (!people || fight.canceled) continue;
+        for (const f of fight.fighters) {
+          const entry = people.get(f.id) || { id: f.id, name: f.name, flag: f.flag, record: f.record, next: null, last: null };
+          const ref = { eventId: ev.id, eventTitle: ev.title, date: ev.date };
+          if (ev.state === 'post') {
+            entry.last = ref; // Events sind aufsteigend sortiert, der letzte Treffer gewinnt
+            entry.record = f.record || entry.record;
+          } else if (!entry.next) {
+            entry.next = ref;
+          }
+          people.set(f.id, entry);
+        }
       }
     }
   }
-  const order = ['P4P-M', 'P4P-W', ...Object.keys(DIVISIONS)];
-  return order.map((k) => divisions.get(k)).filter(Boolean).map((d) => ({
-    ...d,
-    fighters: d.fighters.sort((a, b) => a.rank - b.rank),
-  }));
+  return Object.entries(DIVISIONS).map(([key, d]) => {
+    const fighters = [...byDivision.get(key).values()].sort((a, b) => {
+      if (a.next && b.next) return a.next.date.localeCompare(b.next.date);
+      if (a.next || b.next) return a.next ? -1 : 1;
+      return (b.last?.date || '').localeCompare(a.last?.date || '');
+    });
+    return { key, de: d.de, kg: d.kg, fighters };
+  }).filter((d) => d.fighters.length);
 }
-
-export const getDivisions = () =>
-  cached('divisions:v1', 60, async () => normalizeRankings(await getJson(RANKINGS)));
 
 export const getFighter = (id) =>
   cached(`fighter:v1:${id}`, 60 * 24, async () => {

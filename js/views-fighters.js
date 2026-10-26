@@ -3,6 +3,7 @@ import { getFightsOf } from './data/index.js';
 import { DIVISIONS } from './config.js';
 import { esc, dayShort, lbsToKg, inToCm, resultText, weightLabel } from './format.js';
 import { skeleton, errorBox, backLink, flagImg, avatar } from './ui.js';
+import { divisionKeyOf } from './format.js';
 import { isFav } from './store.js';
 
 const HEADING = 'Kämpfer';
@@ -13,12 +14,14 @@ export async function fightersView(root, key) {
     const divisions = await getDivisions();
     const div = divisions.find((d) => d.key === key) || divisions[0];
     const chips = divisions.map((d) => `
-      <a class="pill ${d.key === div.key ? 'active' : ''}" href="#/fighters/${encodeURIComponent(d.key)}">${esc(d.key.startsWith('P4P') ? d.de.replace('Pound for Pound · ', 'P4P ') : d.de)}</a>`).join('');
+      <a class="pill ${d.key === div.key ? 'active' : ''}" href="#/fighters/${encodeURIComponent(d.key)}">${esc(d.de)}</a>`).join('');
     const rows = div.fighters.map((f) => `
-      <a class="rank-row ${f.champion ? 'champ' : ''}" href="#/fighter/${esc(f.id)}">
-        <span class="rank">${f.champion ? '👑' : f.rank}</span>
+      <a class="rank-row" href="#/fighter/${esc(f.id)}">
         ${flagImg(f.flag)}
-        <span class="fname">${esc(f.name)}${isFav(f.id) ? ' <span class="star">★</span>' : ''}</span>
+        <span class="fname-col">
+          <span class="fname">${esc(f.name)}${isFav(f.id) ? ' <span class="star">★</span>' : ''}</span>
+          <span class="muted small">${f.next ? `Nächster Kampf: ${esc(dayShort(f.next.date))} · ${esc(f.next.eventTitle)}` : f.last ? `Zuletzt: ${esc(dayShort(f.last.date))} · ${esc(f.last.eventTitle)}` : ''}</span>
+        </span>
         <span class="muted small rec">${esc(f.record)}</span>
       </a>`).join('');
     root.innerHTML = `
@@ -26,10 +29,10 @@ export async function fightersView(root, key) {
       <div class="pills" role="tablist">${chips}</div>
       <header class="div-head">
         <h2>${esc(div.de)}</h2>
-        ${div.kg ? `<p class="muted">bis ${div.kg} kg</p>` : '<p class="muted">Die besten Kämpfer über alle Klassen</p>'}
+        <p class="muted">bis ${div.kg} kg</p>
       </header>
-      <div class="card fights">${rows || '<p class="muted center">Keine Rangliste verfügbar.</p>'}</div>
-      <p class="muted small center note">Rangliste laut ESPN.</p>`;
+      <div class="card fights">${rows || '<p class="muted center">Keine Kämpfer gefunden.</p>'}</div>
+      <p class="muted small center note">Aktive Kämpfer der letzten sechs Monate und kommender Events, wer bald kämpft, steht oben. Offizielle Ranglisten und Champions fehlen noch, weil ESPN dafür nur veraltete Daten liefert.</p>`;
     root.querySelector('.pill.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   } catch (e) {
     root.innerHTML = `<h1 class="page-title">${HEADING}</h1>${errorBox(e.message)}`;

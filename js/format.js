@@ -43,11 +43,17 @@ export function resultText(r) {
   return [r.method, [r.round, r.time].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
 }
 
-// "W Strawweight" / "Lightweight" -> "Frauen-Strohgewicht · bis 52 kg"
-export function weightLabel(abbr = '') {
+// "W Strawweight" / "Lightweight" -> Schlüssel in DIVISIONS ("Women's Strawweight"), sonst null
+export function divisionKeyOf(abbr = '') {
   const women = /^W\s/.test(abbr);
   const base = abbr.replace(/^W\s/, '').replace(/^Women's\s/, '');
-  const d = DIVISIONS[(women ? "Women's " : '') + base];
+  const key = (women ? "Women's " : '') + base;
+  return DIVISIONS[key] ? key : null;
+}
+
+// "W Strawweight" / "Lightweight" -> "Frauen-Strohgewicht · bis 52 kg"
+export function weightLabel(abbr = '') {
+  const d = DIVISIONS[divisionKeyOf(abbr)];
   return d ? `${d.de} · bis ${d.kg} kg` : abbr;
 }
 
