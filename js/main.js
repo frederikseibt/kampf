@@ -96,5 +96,13 @@ root.addEventListener('keydown', (e) => {
 route();
 
 if ('serviceWorker' in navigator) {
+  // Neue App-Version erkannt: einmal neu laden, damit sofort der aktuelle Stand zu sehen ist
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded) return;
+    reloaded = true;
+    location.reload();
+  });
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }

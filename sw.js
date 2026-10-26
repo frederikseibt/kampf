@@ -1,6 +1,6 @@
 // Service Worker: App-Shell offline, Daten network-first. Bei Änderungen an
 // Dateien VERSION erhöhen, damit alte Caches verschwinden.
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL = `shell-${VERSION}`;
 const DATA = `data-${VERSION}`;
 
